@@ -133,20 +133,6 @@ async def query_db(sql: str) -> str:
     return results
 ```
 
-## 🧪 测试覆盖
-```bash
-pytest --cov=hello_agents --cov-report=html
-# 当前覆盖率: 87%
-```
-
-## 📈 性能基准
-
-| 场景              | 延迟 (P95) | 吞吐量    |
-|-------------------|-----------|----------|
-| 简单问答          | 1.2s      | 500 qps  |
-| 单次工具调用      | 2.8s      | 200 qps  |
-| 复杂多步推理      | 8.5s      | 50 qps   |
-
 ## 🗺️ 开发路线图
 
 - [x] 基础Agent框架 (v0.1.0)
@@ -160,13 +146,6 @@ pytest --cov=hello_agents --cov-report=html
 
 欢迎提交Issue和Pull Request！请阅读[贡献指南](CONTRIBUTING.md)。
 
-### 贡献者
-<!-- ALL-CONTRIBUTORS-LIST:START -->
-<table>
-  <tr>
-    <td align="center"><a href="https://github.com/yourusername"><img src="https://avatars.githubusercontent.com/u/xxxxx?v=4" width="100px;" alt=""/><br /><sub><b>Your Name</b></sub></a></td>
-  </tr>
-</table>
 
 ## 📄 许可证
 
@@ -180,9 +159,8 @@ pytest --cov=hello_agents --cov-report=html
 
 ## 📧 联系方式
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
-- 个人博客: https://yourblog.com
+- GitHub: [@edgetalker](https://github.com/edgetalker)
+- Email: kevinpan998@gmail.com
 
 ---
 
