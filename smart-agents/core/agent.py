@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional
+from typing import Optional
 from .config import Config
 from .message import Message
 from .llm import SmartAgentLLM
@@ -17,7 +17,7 @@ class Agent(ABC):
         self.llm = llm
         self.system_prompt = system_prompt
         self.config = config or Config()
-        self._history: List[Message] = []
+        self._history: list[Message] = []
 
         
     @abstractmethod
@@ -31,7 +31,7 @@ class Agent(ABC):
     def clear_message(self):
         self._history.clear()
 
-    def get_history(self) -> List[Message]:
+    def get_history(self) -> list[Message]:
         return self._history.copy()
     
     def __str__(self) -> str:

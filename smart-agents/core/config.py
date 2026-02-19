@@ -1,6 +1,6 @@
 import os
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 
 class Config(BaseModel):
     """Agents默认配置类"""
@@ -28,5 +28,5 @@ class Config(BaseModel):
             max_tokens=int(os.getenv("MAX_TOKENS")) if os.getenv("MAX_TOKENS") else None,
         )
     
-    def to_dict(self) -> Dict[str,Any]:
+    def to_dict(self) -> dict[str,Any]:
         return self.model_dump()

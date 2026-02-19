@@ -1,5 +1,5 @@
 import os
-from typing import Optional, List, Dict
+from typing import Optional
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -11,7 +11,7 @@ class SmartAgentLLM:
             model: Optional[str] = None, 
             apiKey: Optional[str] = None, 
             baseUrl: Optional[str] = None, 
-            provider: Optional[List] = None,
+            provider: Optional[list] = None,
             temperature: float = 0.7,
             max_tokens: Optional[int] = None, 
             timeout: Optional[int] = None,
@@ -228,7 +228,7 @@ class SmartAgentLLM:
             else:
                 return "gpt-3.5-turbo"
 
-    def think(self, messages: List[Dict[str, str]]) -> str:
+    def think(self, messages: list[dict[str, str]]) -> str:
         try:
             # 开启流式输出
             response = self._client.chat.completions.create(
@@ -248,7 +248,7 @@ class SmartAgentLLM:
         except Exception as e:
             print(f"调用LLM发生错误{e}")
 
-    def invoke(self, messages: List[Dict[str, str]], **kwargs) -> str:
+    def invoke(self, messages: list[dict[str, str]], **kwargs) -> str:
         try:
             response = self._client.chat.completions.create(
                 model=self.model,
