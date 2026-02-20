@@ -11,13 +11,15 @@ class Message(BaseModel):
     content: str
     role: MessageRole
     timestamp: datetime = None
-    metadata: Optional[dict[str: Any]] = None
+    metadata: Optional[dict[str, Any]] = None
 
     def __init__(self, content: str, role: MessageRole, **kwargs):
-        self.content = content
-        self.role = role
-        self.timestamp = kwargs.get('timestamp', datetime.now())
-        self.metadata = kwargs.get('metadata', {})
+        super().__init__(
+            content=content,
+            role=role,
+            timestamp=kwargs.get('timestamp', datetime.now()),
+            metadata=kwargs.get('metadata', {})
+        )
     
     def to_dict(self) -> dict[str: Any]:
         """转换为OpenAI格式"""

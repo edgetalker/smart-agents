@@ -1,9 +1,23 @@
 import os
-from typing import Optional
+from typing import Optional, Iterator, Literal
 from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
+
+SUPPORTED_PROVIDERS = Literal[
+    "openai",
+    "deepseek",
+    "qwen",
+    "modelscope",
+    "kimi",
+    "zhipu",
+    "ollama",
+    "vllm",
+    "local",
+    "auto",
+    "custom",
+]
 
 class SmartAgentLLM:
     def __init__(
@@ -11,7 +25,7 @@ class SmartAgentLLM:
             model: Optional[str] = None, 
             apiKey: Optional[str] = None, 
             baseUrl: Optional[str] = None, 
-            provider: Optional[list] = None,
+            provider: Optional[SUPPORTED_PROVIDERS] = None,
             temperature: float = 0.7,
             max_tokens: Optional[int] = None, 
             timeout: Optional[int] = None,
@@ -33,7 +47,7 @@ class SmartAgentLLM:
             self.api_key = apiKey or os.getenv("LLM_API_KEY")
             self.base_url = baseUrl or os.getenv("LLM_BASE_URL")
         else: 
-            self.api_key, self.base_url = self._resolve_credentials(self.api_key, self.base_url)
+            self.api_key, self.base_url = self._resolve_credentials(apiKey, baseUrl)
 
         # 验证必要参数（需要吗）
         if not self.model:
@@ -44,7 +58,7 @@ class SmartAgentLLM:
         self._client = self._create_client()
 
     def _create_client(self) -> OpenAI:
-        return OpenAI(api_key=self.apiKey, base_url=self.baseUrl, timeout=self.timeout)
+        return OpenAI(api_key=self.api_key, base_url=self.base_url, timeout=self.timeout)
 
     def _auto_detect_provider(self, api_key: Optional[str], base_url: Optional[str]) -> str:
         """
@@ -124,7 +138,9 @@ class SmartAgentLLM:
                         return "local"
             elif any(port in base_url_lower for port in [":8080", ":7860", ":5000"]):
                 return "local"
-            
+        
+        return "auto"
+    
     def _resolve_credentials(self, api_key: Optional[str], base_url: Optional[str]) -> tuple[str, str]:
         """根据provider解析API密钥和base_url"""
         if self.provider == "openai":
@@ -228,7 +244,10 @@ class SmartAgentLLM:
             else:
                 return "gpt-3.5-turbo"
 
-    def think(self, messages: list[dict[str, str]]) -> str:
+    def think(self, messages: list[dict[str, str]], temperature: Optional[float] = None) -> Iterator[str]:
+        """
+        调用大模型进行思考, 并返回流式响应
+        """
         try:
             # 开启流式输出
             response = self._client.chat.completions.create(
@@ -249,6 +268,10 @@ class SmartAgentLLM:
             print(f"调用LLM发生错误{e}")
 
     def invoke(self, messages: list[dict[str, str]], **kwargs) -> str:
+        """
+        非流式调用LLM, 返回完整响应
+        适用于不需要流式输出的场景
+        """
         try:
             response = self._client.chat.completions.create(
                 model=self.model,
@@ -260,4 +283,8 @@ class SmartAgentLLM:
             return response.choices[0].message.content
         except Exception as e:
             raise ValueError(f"LLM调用失败{e}")
+        
+    def stream_invoke(self, messages: list[dict[str, str]], **kwargs) -> Iterator[str]:
+        temperature = kwargs.get("temperature")
+        yield from self.think(messages, temperature)
         
