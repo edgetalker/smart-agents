@@ -7,7 +7,7 @@ from ..core.llm import SmartAgentLLM
 from ..core.config import Config
 
 if TYPE_CHECKING:
-    from ..tools.base import ToolRegistry
+    from ..tools.registry import ToolRegistry
 
 class SimpleAgent(Agent):
     """新增工具调用与消息模版"""

@@ -3,7 +3,7 @@ from typing import Optional
 from ..core.config import Config
 from ..core.agent import Agent
 from ..core.llm import SmartAgentLLM
-from ..tools.base import ToolRegistry
+from ..tools.registry import ToolRegistry
 from ..core.message import Message
 
 DEFAULT_REACT_PROMPT = """你是一个具备推理和行动能力的AI助手。你可以通过思考分析问题，然后调用合适的工具来获取信息，最终给出准确的答案。

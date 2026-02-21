@@ -4,7 +4,7 @@
 import os 
 from dotenv import load_dotenv
 
-from ..tools.base import ToolRegistry
+from ..registry import ToolRegistry
 
 load_dotenv()
 
