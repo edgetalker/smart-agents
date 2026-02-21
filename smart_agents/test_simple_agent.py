@@ -1,11 +1,15 @@
+"""
+调用工具方式需要手动添加工具后，Agent才能进行感知调用
+依赖于tool的desc
+"""
 import sys
 import os
 
 from dotenv import load_dotenv
 from .agents.simple_agent import SimpleAgent
-from .tools.base import ToolRegistry
+from .tools.registry import ToolRegistry
 from .core.llm import SmartAgentLLM
-from .tools.calculator import CalculatorTool
+from .tools.builtin.calculator import CalculatorTool
 # 加载环境变量
 load_dotenv()
 

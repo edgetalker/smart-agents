@@ -1,7 +1,7 @@
 import ast
 import operator
 import math
-from .base import Tool
+from ..base import Tool
 from typing import Any
 
 class CalculatorTool(Tool):
@@ -93,7 +93,7 @@ class CalculatorTool(Tool):
         
     def get_parameters(self):
         """获取工具定义参数定义"""
-        from .base import ToolParameter
+        from ..base import ToolParameter
         return [
             ToolParameter(
                 name = "input",
