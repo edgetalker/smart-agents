@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🤖 HelloAgents
+# 🤖 SmartAgents
 
 *从零实现LLM Agent框架 - 教学级实现与工程化实践*
 
