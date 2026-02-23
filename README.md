@@ -23,10 +23,10 @@
 
 ## 🎬 快速演示
 ```python
-from smart_agents import SimpleAgent
-from smart_agents.llm import SimpleAgentLLM
-from smart_agents.tools import ToolRegistry
-from smart_agents.tools.bulitin import SearchTool
+from smartagents-py import SimpleAgent
+from smart_agents-py.llm import SimpleAgentLLM
+from smart_agents-py.tools import ToolRegistry
+from smart_agents-py.tools.bulitin import SearchTool
 # 初始化LLM
 llm = SmartAgentLLM()
 
@@ -77,7 +77,7 @@ print(f"工具增强助手响应: {response}")
 ### 安装
 ```bash
 # 使用pip安装
-pip install smart_agents
+pip install smart_agents-py
 
 # 或从源码安装
 git clone https://github.com/edgetalker/smart_agents.git
@@ -117,7 +117,7 @@ relevant = agent.memory.retrieve("编程语言")
 
 ### 3️⃣ 自定义工具
 ```python
-from smart_agents.tools import Tool
+from smart_agents-py.tools import Tool
 
 @Tool(
     name="database_query",
@@ -144,7 +144,7 @@ async def query_db(sql: str) -> str:
 
 ## 📄 许可证
 
-[MIT License](LICENSE) © 
+[MIT License](LICENSE) © edgetalker
 
 ## 🙏 致谢
 
