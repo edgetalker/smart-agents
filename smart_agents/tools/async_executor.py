@@ -75,7 +75,7 @@ class AsyncToolExecutor:
         print(f"🎉 并行执行完成，成功: {sum(1 for r in results if r['status'] == 'success')}/{len(results)}")
         return results
 
-    async def execute_tools_batch(self, tool_name: str, input_list: List[str]) -> List[Dict[str, Any]]:
+    async def execute_tools_batch(self, tool_name: str, input_list: list[str]) -> list[dict[str, Any]]:
         """
         批量执行同一个工具
         
@@ -104,4 +104,45 @@ class AsyncToolExecutor:
         self.close()
 
 
+# 便捷函数
+async def run_parallel_tools(registry: ToolRegistry, tasks: List[Dict[str, str]], max_workers: int = 4) -> List[Dict[str, Any]]:
+    """
+    便捷函数：并行执行多个工具
+    
+    Args:
+        registry: 工具注册表
+        tasks: 任务列表
+        max_workers: 最大工作线程数
+        
+    Returns:
+        执行结果列表
+    """
+    async with AsyncToolExecutor(registry, max_workers) as executor:
+        return await executor.execute_tools_parallel(tasks)
 
+
+async def run_batch_tool(registry: ToolRegistry, tool_name: str, input_list: List[str], max_workers: int = 4) -> List[Dict[str, Any]]:
+    """
+    便捷函数：批量执行同一个工具
+    
+    Args:
+        registry: 工具注册表
+        tool_name: 工具名称
+        input_list: 输入数据列表
+        max_workers: 最大工作线程数
+        
+    Returns:
+        执行结果列表
+    """
+    async with AsyncToolExecutor(registry, max_workers) as executor:
+        return await executor.execute_tools_batch(tool_name, input_list)
+
+# 同步包装函数（为了兼容性）
+def run_parallel_tools_sync(registry: ToolRegistry, tasks: List[Dict[str, str]], max_workers: int = 4) -> List[Dict[str, Any]]:
+    """同步版本的并行工具执行"""
+    return asyncio.run(run_parallel_tools(registry, tasks, max_workers))
+
+
+def run_batch_tool_sync(registry: ToolRegistry, tool_name: str, input_list: List[str], max_workers: int = 4) -> List[Dict[str, Any]]:
+    """同步版本的批量工具执行"""
+    return asyncio.run(run_batch_tool(registry, tool_name, input_list, max_workers))

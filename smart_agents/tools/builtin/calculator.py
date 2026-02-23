@@ -5,10 +5,7 @@ from ..base import Tool
 from typing import Any
 
 class CalculatorTool(Tool):
-    """python 计算工具
-    ast将字符串表达式解析为树形表示
-    不使用eval()
-    """
+    """python 计算工具"""
 
     # 支持的操作符
     OPERATORS = {
@@ -63,6 +60,18 @@ class CalculatorTool(Tool):
             print(f"❌ {error_msg}")
             return error_msg
         
+    def get_parameters(self):
+        """获取工具定义参数定义"""
+        from ..base import ToolParameter
+        return [
+            ToolParameter(
+                name = "input",
+                type = "string",
+                description = "要计算的数学表达式, 支持基本运算和数学函数",
+                required = True
+            )
+        ]
+    
     def _eval_node(self, node):
         """递归计算ast节点"""
         if isinstance(node, ast.Constant):  # Python 3.8+
@@ -91,14 +100,3 @@ class CalculatorTool(Tool):
         else:
             raise ValueError(f"不支持的表达式类型: {type(node)}")
         
-    def get_parameters(self):
-        """获取工具定义参数定义"""
-        from ..base import ToolParameter
-        return [
-            ToolParameter(
-                name = "input",
-                type = "string",
-                description = "要计算的数学表达式, 支持基本运算和数学函数",
-                required = True
-            )
-        ]

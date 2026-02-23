@@ -176,17 +176,13 @@ class SimpleAgent(Agent):
     def add_tool(self, tool) -> None:
         """添加工具到Agent"""
         if not self.tool_registry:
-            from ..tools.base import ToolRegistry
+            from ..tools.registry import ToolRegistry
             self.tool_registry = ToolRegistry()
             self.enable_tool_calling = True
         
         self.tool_registry.register_tool(tool)
         print(f"🔧 工具 '{tool.name}' 已添加")
 
-    def has_tool(self) -> bool:
-        """检查是否有有用工具"""
-        return self.enable_tool_calling and self.tool_registry is not None
-    
     def remove_tool(self, tool_name: str) -> bool:
         """移除工具"""
         if self.tool_registry:  

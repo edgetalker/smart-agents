@@ -3,25 +3,62 @@
 
 import os 
 from dotenv import load_dotenv
-
+from typing import Any
 from ..registry import ToolRegistry
+from ..base import Tool
 
 load_dotenv()
 
-class SearchTool:
-    """搜索工具"""
-
+class SearchTool(Tool):
+    """内置搜索工具"""
     def __init__(self):
-        self.name = "my_advanced_search_tool"
+        super().__init__(
+            name="my_advanced_search_tool",
+            description="多源搜索工具"
+        )
         self.search_tools = []
         self._setup_search_resources()
+    
+    def run(self, parameters: dict[str, Any]) -> str:
+        """执行智能搜索"""
+        print(f"🔍 开始执行搜索")
+        input = parameters.get("input")
+
+        for tool in self.search_tools:
+            try:
+                if tool == 'tavily':
+                    result = self._search_with_tavily(input)
+                    if result and "未找到" not in result:
+                        return f"Tavily 搜索结果: \n\n{result}"
+                    
+                elif tool == 'serpapi':
+                    result = self._search_with_serpapi(input)
+                    if result and "未找到" not in result:
+                        return f"SerpApi Google搜索结果: \n\n{result}"
+            except Exception as e:
+                print(f"⚠️ {tool} 搜索失败: {e}")
+                continue
+
+        return "❌ 所有搜索源都失败了，请检查网络连接和API密钥配置"
+        
+    def get_parameters(self):
+        """获取工作参数定义"""
+        from ..base import ToolParameter
+        return [
+            ToolParameter(
+                name = "input",
+                type = "string",
+                description = "需要查询的信息",
+                required = True
+            )
+        ]
 
     def _setup_search_resources(self):
         """初始化搜索源"""
         if os.getenv("TAVILY_API_KEY"):
             try:
-                from tavily import tavilyClient
-                self.travily_client = tavilyClient(api_key = os.getenv("TAVILY_API_KEY"))
+                from tavily import TavilyClient
+                self.tavily_client = TavilyClient(api_key = os.getenv("TAVILY_API_KEY"))
                 self.search_tools.append("tavily")
                 print(f"✅ 已启用travily搜索源")
             except ImportError:
@@ -39,26 +76,6 @@ class SearchTool:
             print(f"🔧 可用搜索源：{', '.join(self.search_tools)}")
         else:
             print("⚠️ 没有可用的搜索源，请配置API密钥")
-    
-    def search(self, query: str) -> str:
-        """执行智能搜索"""
-        print(f"🔍 开始执行搜索")
-
-        for tool in self.search_tools:
-            try:
-                if tool == 'tavily':
-                    result = self._search_with_tavily(query)
-                    if result and "未找到" not in result:
-                        return f"Tavily 搜索结果: \n\n{result}"
-                    
-                elif tool == 'serpapi':
-                    result = self._search_with_serpapi(query)
-                    if result and "未找到" not in result:
-                        return f"SerpApi Google搜索结果: \n\n{result}"
-            except Exception as e:
-                print(f"⚠️ {tool} 搜索失败: {e}")
-                continue
-            return "❌ 所有搜索源都失败了，请检查网络连接和API密钥配置"
 
     def _search_with_tavily(self, query: str) -> str:
         """使用Tavily搜索"""
@@ -78,9 +95,9 @@ class SearchTool:
 
     def _search_with_serpapi(self, query: str) -> str:
         """使用SerpApi搜索"""
-        import serpapi
+        from serpapi import GoogleSearch
 
-        search = serpapi.GoogleSearch({
+        search = GoogleSearch({
             "q": query,
             "api_key": os.getenv("SERPAPI_API_KEY"),
             "num": 3
@@ -95,19 +112,3 @@ class SearchTool:
                 result += f"    {res.get('snippet', '')}\n\n"
 
         return result
-
-def create_advanced_search_registry():
-    """创建包含高级搜索工具的注册表"""
-    registry = ToolRegistry()
-
-    # 创建搜索工具实例
-    search_tool = SearchTool()
-
-    # 注册搜索工具的方法作为函数
-    registry.register_function(
-        name="advanced_search",
-        description="高级搜索工具，整合Tavily和SerpAPI多个搜索源，提供更全面的搜索结果",
-        func=search_tool.search
-    )
-
-    return registry
