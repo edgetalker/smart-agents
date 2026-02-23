@@ -1,6 +1,6 @@
 """SmartAgents - A lightweight agent framework based on LLM"""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from smart_agents.agents.simple_agent import SimpleAgent
 from smart_agents.agents.react_agent import ReActAgent

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 MessageRole = Literal["system", "user", "assistant", "tool"]
 
 class Message(BaseModel):
+    """统一封装消息类"""
     content: str
     role: MessageRole
     timestamp: datetime = None
