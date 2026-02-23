@@ -24,9 +24,9 @@
 ## 🎬 快速演示
 ```python
 from smart_agents import SimpleAgent
-from smart_agents.llm import SimpleAgentLLM
+from smart_agents.core import SmartAgentLLM
 from smart_agents.tools import ToolRegistry
-from smart_agents.tools.bulitin import SearchTool
+from smart_agents.tools.builtin import SearchTool
 # 初始化LLM
 llm = SmartAgentLLM()
 
