@@ -20,6 +20,7 @@ SUPPORTED_PROVIDERS = Literal[
 ]
 
 class SmartAgentLLM:
+    """LLM backend"""
     def __init__(
             self, 
             model: Optional[str] = None, 

@@ -23,14 +23,15 @@
 
 ## 🎬 快速演示
 ```python
-from smartagents-py import SimpleAgent
-from smart_agents-py.llm import SimpleAgentLLM
-from smart_agents-py.tools import ToolRegistry
-from smart_agents-py.tools.bulitin import SearchTool
+from smart_agents import SimpleAgent
+from smart_agents.llm import SimpleAgentLLM
+from smart_agents.tools import ToolRegistry
+from smart_agents.tools.bulitin import SearchTool
 # 初始化LLM
 llm = SmartAgentLLM()
 
 # 初始化工具
+tool_registry = ToolRegistry()
 searchTool = SearchTool()
 tool_registry.register_tool(searchTool)
 
