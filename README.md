@@ -1,13 +1,11 @@
 <div align="center">
 
-# 🤖 HelloAgents
+# 🤖 SmartAgents
 
 *从零实现LLM Agent框架 - 教学级实现与工程化实践*
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://github.com/yourusername/hello-agents/workflows/tests/badge.svg)](https://github.com/yourusername/hello-agents/actions)
-[![Coverage](https://codecov.io/gh/yourusername/hello-agents/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/hello-agents)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 [🚀 快速开始](#快速开始) • [📖 文档](docs/) • [🎯 示例](examples/) • [🤝 贡献指南](CONTRIBUTING.md)
@@ -18,29 +16,39 @@
 
 ## ✨ 项目亮点
 
-- 🎓 **教学导向**: 清晰的代码注释和渐进式实现，适合学习Agent内部机制
+- 🎓 **低耦合架构**: 清晰的模块组织和渐进式实现，适合学习Agent内部机制
 - 🏗️ **工程化实践**: 模块化架构、完整测试、CI/CD流程
-- 🔧 **生产可用**: 支持DeepSeek/OpenAI等多Provider，性能优化到位
-- 📚 **功能完整**: ReAct、Reflexion、多Agent协作、向量记忆
+- 🔧 **生产可用**: 支持DeepSeek/OpenAI等多Provider，自动检测服务商
+- 📚 **功能完整**: 内置多种工具调用、工具链、工具异步调用
 
 ## 🎬 快速演示
 ```python
-from hello_agents import ReactAgent
-from hello_agents.llm import DeepSeekProvider
-from hello_agents.tools import ToolRegistry, web_search, calculator
+from smartagents-py import SimpleAgent
+from smart_agents-py.llm import SimpleAgentLLM
+from smart_agents-py.tools import ToolRegistry
+from smart_agents-py.tools.bulitin import SearchTool
+# 初始化LLM
+llm = SmartAgentLLM()
+
+# 初始化工具
+searchTool = SearchTool()
+tool_registry.register_tool(searchTool)
 
 # 初始化Agent
-agent = ReactAgent(
-    llm=DeepSeekProvider(api_key="your-key"),
-    tools=ToolRegistry([web_search, calculator])
+agent = SimpleAgent(
+    name="工具增强助手",
+    llm=llm,
+    system_prompt="你是一个智能助手，可以使用工具来帮助用户。",
+    tool_registry=tool_registry,
+    enable_tool_calling=True
 )
 
-# 执行复杂任务
-result = await agent.run(
-    "北京今天天气如何？如果温度低于10度，计算需要穿几件衣服"
-)
-print(result)
-# Output: 北京今天6度，建议穿3件衣服保暖...
+response = agent.run("2026年小米手机最新款是什么，有什么卖点")
+print(f"工具增强助手响应: {response}")
+# 2026年小米手机的最新款型有几个比较主要的系列：
+
+# 1. Redmi Note系列：主打千元长续航、耐用抗造，适合长辈、户外、备用机。
+# 2. Redmi K系列：主打电竞性能、性价比旗舰，适合学生、游戏玩家。...
 ```
 
 ## 📊 架构设计
@@ -69,30 +77,17 @@ print(result)
 ### 安装
 ```bash
 # 使用pip安装
-pip install hello-agents
+pip install smart_agents-py
 
 # 或从源码安装
-git clone https://github.com/yourusername/hello-agents.git
+git clone https://github.com/edgetalker/smart_agents.git
 cd hello-agents
-poetry install
 ```
 
 ### 配置
 ```bash
 cp .env.example .env
 # 编辑.env文件，填入API密钥
-```
-
-### 运行示例
-```bash
-# 简单问答
-python examples/simple_qa.py
-
-# 工具调用演示
-python examples/tool_calling.py
-
-# 多Agent协作
-python examples/multi_agent_team.py
 ```
 
 ## 📖 核心功能
@@ -122,7 +117,7 @@ relevant = agent.memory.retrieve("编程语言")
 
 ### 3️⃣ 自定义工具
 ```python
-from hello_agents.tools import Tool
+from smart_agents-py.tools import Tool
 
 @Tool(
     name="database_query",
@@ -132,20 +127,6 @@ async def query_db(sql: str) -> str:
     # 你的实现
     return results
 ```
-
-## 🧪 测试覆盖
-```bash
-pytest --cov=hello_agents --cov-report=html
-# 当前覆盖率: 87%
-```
-
-## 📈 性能基准
-
-| 场景              | 延迟 (P95) | 吞吐量    |
-|-------------------|-----------|----------|
-| 简单问答          | 1.2s      | 500 qps  |
-| 单次工具调用      | 2.8s      | 200 qps  |
-| 复杂多步推理      | 8.5s      | 50 qps   |
 
 ## 🗺️ 开发路线图
 
@@ -158,19 +139,12 @@ pytest --cov=hello_agents --cov-report=html
 
 ## 🤝 贡献
 
-欢迎提交Issue和Pull Request！请阅读[贡献指南](CONTRIBUTING.md)。
+欢迎提交Issue和Pull Request!
 
-### 贡献者
-<!-- ALL-CONTRIBUTORS-LIST:START -->
-<table>
-  <tr>
-    <td align="center"><a href="https://github.com/yourusername"><img src="https://avatars.githubusercontent.com/u/xxxxx?v=4" width="100px;" alt=""/><br /><sub><b>Your Name</b></sub></a></td>
-  </tr>
-</table>
 
 ## 📄 许可证
 
-[MIT License](LICENSE) © 2025 Your Name
+[MIT License](LICENSE) © edgetalker
 
 ## 🙏 致谢
 
@@ -180,9 +154,8 @@ pytest --cov=hello_agents --cov-report=html
 
 ## 📧 联系方式
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
-- 个人博客: https://yourblog.com
+- GitHub: [@edgetalker](https://github.com/edgetalker)
+- Email: kevinpan998@gmail.com
 
 ---
 
