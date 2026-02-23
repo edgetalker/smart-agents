@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "smartagents"
+version = "0.1.0"
+description = "A lightweight agent framework based on LLM"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "edgewatcher", email = "your@email.com" }
+]
+keywords = ["agent", "llm", "ai", "openai"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# 运行时依赖
+dependencies = [
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+    "requests>=2.25.0",
+    "python-dotenv>=1.0.0",
+    "tavily-python>=0.3.0",
+    "google-search-results>=2.4.0",  # serpapi 的正确包名
+]
+
+[project.optional-dependencies]
+# 开发依赖：pip install smartagents[dev]
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-username/smartagents"
+Repository = "https://github.com/your-username/smartagents"
+Issues = "https://github.com/your-username/smartagents/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["smart_agents*"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+```
+
+---
+
+## 同步更新 `requirements.txt`
+
+建议把 `requirements.txt` 也修正：
+```
+# 运行依赖
+openai>=1.0.0
+pydantic>=2.0.0
+requests>=2.25.0
+python-dotenv>=1.0.0
+tavily-python>=0.3.0
+google-search-results>=2.4.0
+
+# 开发依赖
+pytest>=7.0.0
+black>=22.0.0
