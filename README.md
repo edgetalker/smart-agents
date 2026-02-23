@@ -27,6 +27,8 @@ from smart_agents import SimpleAgent
 from smart_agents.core import SmartAgentLLM
 from smart_agents.tools import ToolRegistry
 from smart_agents.tools.builtin import SearchTool
+from dotenv import load_dotenv
+load_dotenv()
 # 初始化LLM
 llm = SmartAgentLLM()
 
