@@ -4,7 +4,6 @@
 import os 
 from dotenv import load_dotenv
 from typing import Any
-from ..registry import ToolRegistry
 from ..base import Tool
 
 load_dotenv()
@@ -112,3 +111,9 @@ class SearchTool(Tool):
                 result += f"    {res.get('snippet', '')}\n\n"
 
         return result
+
+
+# 便携函数
+def search(query: str) -> str:
+    tool = SearchTool()
+    return tool.run({"input": query, "backend": backend})  # type: ignore[return-value]
