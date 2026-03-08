@@ -89,10 +89,10 @@ class ReflectionAgent(Agent):
         self,
         name: str,
         llm: SmartAgentLLM,
-        system_prompt: str | None,
-        config: Config | None,
+        system_prompt: str | None = None,
+        config: Config | None = None,
         max_iterations: int = 3,
-        custom_prompt: dict[str, str] | None = None
+        custom_prompts: dict[str, str] | None = None
     ):
         """
         初始化ReflectionAgent
@@ -110,7 +110,7 @@ class ReflectionAgent(Agent):
         self.memory = Memory()
 
         # 设置提示词模版
-        self.prompts = custom_prompt if custom_prompt else DEFAULT_PROMPTS
+        self.prompts = custom_prompts if custom_prompts else DEFAULT_PROMPTS
 
     def run(self, input_text: str, **kwargs) -> str:
         print(f"\n 🤖 {self.name} 开始处理任务: {input_text}")

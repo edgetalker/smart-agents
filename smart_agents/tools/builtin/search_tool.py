@@ -116,4 +116,4 @@ class SearchTool(Tool):
 # 便携函数
 def search(query: str) -> str:
     tool = SearchTool()
-    return tool.run({"input": query, "backend": backend})  # type: ignore[return-value]
+    return tool.run({"input": query})  # type: ignore[return-value]

@@ -477,7 +477,7 @@ def demo_advanced_features():
 
 def main():
     """主函数"""
-    print("🚀 HelloAgents 框架完整演示")
+    print("🚀 SmartAgents 框架完整演示")
     print("基于OpenAI原生API的多智能体框架")
     print("\n🎯 演示内容：")
     print("1. 四种Agent范式的默认配置使用")
