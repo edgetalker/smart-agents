@@ -1,6 +1,8 @@
 """搜索工具 - SmartAgents 原生搜索实现。"""
 import os 
 import requests
+import logging
+
 from dotenv import load_dotenv
 from typing import Any, Iterable
 from ..base import Tool, ToolParameter
@@ -13,6 +15,11 @@ except Exception:
     markdownify = None
 
 try:
+    from ddgs import DDGS 
+except Exception: 
+    DDGS = None
+
+try:
     from tavily import TavilyClient  
 except Exception:  
     TavilyClient = None
@@ -21,6 +28,8 @@ try:
     from serpapi import GoogleSearch  
 except Exception: 
     GoogleSearch = None
+
+logger = logging.getLogger(__name__)
 
 CHARS_PER_TOKEN= 4
 DEFAULT_MAX_RESULTS= 5
