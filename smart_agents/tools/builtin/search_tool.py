@@ -1,48 +1,156 @@
-# Tavily 搜索API库 - 返回格式化搜索内容
-# SERPAPI 通用SERP数据抓取
-
+"""搜索工具 - SmartAgents 原生搜索实现。"""
 import os 
+import requests
 from dotenv import load_dotenv
-from typing import Any
-from ..base import Tool
+from typing import Any, Iterable
+from ..base import Tool, ToolParameter
 
 load_dotenv()
 
-class SearchTool(Tool):
-    """内置搜索工具"""
-    def __init__(self):
-        super().__init__(
-            name="my_advanced_search_tool",
-            description="多源搜索工具"
-        )
-        self.search_tools = []
-        self._setup_search_resources()
+try:  # 可选依赖，缺失时降级能力
+    from markdownify import markdownify
+except Exception:  
+    markdownify = None
+
+try:
+    from tavily import TavilyClient  
+except Exception:  
+    TavilyClient = None
+
+try:
+    from serpapi import GoogleSearch  
+except Exception: 
+    GoogleSearch = None
+
+CHARS_PER_TOKEN= 4
+DEFAULT_MAX_RESULTS= 5
+SUPPORTED_RETURN_MODES = {"text", "structured", "json", "dict"}
+SUPPORTED_BACKENDS = {
+    "hybrid",
+    "advanced",
+    "tavily",
+    "serpapi",
+    "duckduckgo",
+    "searxng",
+    "perplexity",
+}
+
+def _limit_text(text: str, token_limit: int) -> str:
+    char_limit=token_limit * CHARS_PER_TOKEN
+    if len(text) <= char_limit:
+        return text
+    else:
+        return text[:char_limit] + "... [truncated]"
     
-    def run(self, parameters: dict[str, Any]) -> str:
-        """执行智能搜索"""
-        print(f"🔍 开始执行搜索")
-        input = parameters.get("input")
+def _fetch_raw_content(url: str) -> str | None:
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+    except Exception as exc:
+        logger.debug("Failed to fetch raw content for %s: %s", url, exc)
+        return None
+    if markdownify is not None:
+        try:
+            return markdownify(response.text)
+        except Exception as exc:
+            logger.debug("markdownify failed for %s", url, exc)
+    return response.text
 
-        for tool in self.search_tools:
-            try:
-                if tool == 'tavily':
-                    result = self._search_with_tavily(input)
-                    if result and "未找到" not in result:
-                        return f"Tavily 搜索结果: \n\n{result}"
-                    
-                elif tool == 'serpapi':
-                    result = self._search_with_serpapi(input)
-                    if result and "未找到" not in result:
-                        return f"SerpApi Google搜索结果: \n\n{result}"
-            except Exception as e:
-                print(f"⚠️ {tool} 搜索失败: {e}")
-                continue
+def _normalized_result(
+    *,
+    title: str,
+    url: str,
+    content: str,
+    raw_content: str | None,
+) -> dict[str, str]:
+    payload: dict[str, str] = {
+        "title": title or url,
+        "url": url,
+        "content": content or "",
+    }
 
-        return "❌ 所有搜索源都失败了，请检查网络连接和API密钥配置"
+    if raw_content is not None:
+        payload["raw_content"] = raw_content
+    return payload
+
+def _structured_payload(
+    results: Iterable[dict[str, Any]],
+    *,
+    backend: str,
+    answer: str | None = None,
+    notices: Iterable[str] | None = None,
+) -> dict[str, Any]:
+    return {
+        "results": list(results),
+        "backend": backend,
+        "answer": answer,
+        "notices": list(notices or []),
+    }
+
+class SearchTool(Tool):
+    """支持多后端、可返回结构化的搜索工具"""
+    def __init__(
+        self,
+        backend: str,
+        tavily_key: str | None = None,
+        serpapi_key: str | None = None,
+        perplexity_key: str | None = None,
+    ) -> None:
+        super().__init__(
+            name="search",
+            description=(
+                "智能网页搜索引擎，支持 Tavily、SerpApi、DuckDuckGo、SearXNG、"
+                "Perplexity 等后端，可返回结构化或文本化的搜索结果。"
+            )
+        )
+        self.backend = (backend or "hybrid").lower()
+        self.tavily_key = tavily_key or os.getenv("TAVILY_API_KEY")
+        self.serpapi_key = serpapi_key or os.getenv("SERPAPI_API_KEY") 
+        self.perplexity_key = perplexity_key or os.getenv("PERPLEXITY_API_KEY")
         
-    def get_parameters(self):
-        """获取工作参数定义"""
-        from ..base import ToolParameter
+        self.available_backends: list[str] = []
+        self.tavily_client = None
+        self._setup_backends()
+    
+    def run(self, parameters: dict[str, Any]) -> str | dict[str, Any]:
+        """动态配置"""
+        query = (parameters.get("input") or parameters.get("query") or "").strip()
+        if not query:
+            return f"❌ 搜索查询不为空"
+        
+        backend = str(parameters.get("backend" , self.backend) or "hybrid").lower()
+        backend = backend if backend in SUPPORTED_BACKENDS else "hybrid"
+
+        mode = str(
+            parameters.get("mode")
+            or parameters.get("return_mode")
+            or "text"
+        ).lower()
+
+        if mode not in SUPPORTED_RETURN_MODES:
+            mode = "text"
+
+        fetch_full_page = bool(parameters.get("fetch_full_page", False))
+        max_results = int(parameters.get("max_results", DEFAULT_MAX_RESULTS))
+        max_tokens = int(parameters.get("loop_count", 0))
+        loop_count = int(parameters.get("loop_count", 0))
+
+        payload = self._structured_search(
+            query=query,
+            backend=backend,
+            fetch_full_page=fetch_full_page,
+            max_results=max_results,
+            max_tokens=max_tokens,
+            loop_count=loop_count
+        )
+
+        if mode in {"structured", "json", "dict"}:
+            return payload
+        
+        return self._format_text_response(query=query, payload=payload)
+
+    def get_parameters(self) -> list[ToolParameter]:
+        """获取工作参数定义"""  
         return [
             ToolParameter(
                 name = "input",
@@ -52,68 +160,452 @@ class SearchTool(Tool):
             )
         ]
 
-    def _setup_search_resources(self):
-        """初始化搜索源"""
-        if os.getenv("TAVILY_API_KEY"):
+    def _setup_backends(self):
+        if self.tavily_key and TavilyClient is not None:
             try:
-                from tavily import TavilyClient
-                self.tavily_client = TavilyClient(api_key = os.getenv("TAVILY_API_KEY"))
-                self.search_tools.append("tavily")
-                print(f"✅ 已启用travily搜索源")
-            except ImportError:
-                print(f"⚠️ tavily 库未安装")
-
-        if os.getenv("SERPAPI_API_KEY"):
-            try:
-                import serpapi    
-                self.search_tools.append("serpapi")
-                print(f"✅ 已启用serpapi搜索源")
-            except ImportError:
-                print(f"⚠️ serpapi 库未安装")
-
-        if self.search_tools:
-            print(f"🔧 可用搜索源：{', '.join(self.search_tools)}")
+                self.tavily_client = TavilyClient(api_key=self.tavily_key)
+                self.available_backends.append("tavily")
+                print("✅ Tavily 搜索引擎已初始化")
+            except Exception as exc:
+                print(f"⚠️ Tavily 初始化失败: {exc}")
+        elif self.tavily_key:
+            print("⚠️ 未安装 tavily_python, 无法使用 Tavily 搜索")
         else:
-            print("⚠️ 没有可用的搜索源，请配置API密钥")
+            print("⚠️ TAVILY_API_KEY 未设置")
 
-    def _search_with_tavily(self, query: str) -> str:
-        """使用Tavily搜索"""
-        response = self.tavily_client.search(query=query, max_results=3)
-
-        if response.get('answer'):
-            result = f"💡 AI直接答案:{response['answer']}\n\n"
+        if self.serpapi_key:
+            if GoogleSearch is not None:
+                self.available_backends.append("serpapi")
+                print("✅ Serpapi 搜索引擎已初始化")
+            else:
+                print("⚠️ 未安装 google-search-results, 无法使用 Serpapi 搜索")
         else:
-            result = ""
+            print("⚠️ SERPAPI_API_KEY 未设置")
 
-        result += "🔗 相关结果:\n"
-        for i, item in enumerate(response.get('results', [])[:3], 1):
-            result += f"[{i}] {item.get('title', '')}\n"
-            result += f"    {item.get('content', '')[:150]}...\n\n"
+        if self.backend not in SUPPORTED_BACKENDS:
+            print("⚠️ 不支持的搜索后端，将使用 hybrid 模式")
+            self.backend = "hybrid"
+        elif self.backend == "tavily" and "tavily" not in self.available_backends:
+            print("⚠️ Tavily 不可用，将使用 hybrid 模式")
+            self.backend = "hybrid"
+        elif self.backend == "serpapi" and "serpapi" not in self.available_backends:
+            print("⚠️ SerpApi 不可用，将使用 hybrid 模式")
+            self.backend = "hybrid"
 
-        return result
+        if self.backend == "hybrid":
+            if self.available_backends:
+                print(
+                    "🔧 混合搜索模式已启用，可用后端: "
+                    + ", ".join(self.available_backends)
+                )
+            else:
+                print("⚠️ 没有可用的 Tavily/SerpApi 搜索源，将回退到通用模式")
 
-    def _search_with_serpapi(self, query: str) -> str:
-        """使用SerpApi搜索"""
-        from serpapi import GoogleSearch
+    def _structured_search(
+        self,
+        *,
+        query: str,
+        backend: str,
+        fetch_full_page: bool,
+        max_results: int,
+        max_tokens: int,
+        loop_count: int,
+    ) -> dict[str, Any]:
+        # 统一将 hybrid 视作 advanced,以保持向后兼容的优先级逻辑
+        target_backend = "advanced" if backend == "hybrid" else backend
 
-        search = GoogleSearch({
+        if target_backend == "tavily":
+            return self._search_tavily(
+                query=query,
+                fetch_full_page=fetch_full_page,
+                max_results=max_results,
+                max_tokens=max_tokens,
+            )
+        if target_backend == "serpapi":
+            return self._search_serpapi(
+                query=query,
+                fetch_full_page=fetch_full_page,
+                max_results=max_results,
+                max_tokens=max_tokens,
+            )
+        if target_backend == "duckduckgo":
+            return self._search_duckduckgo(
+                query=query,
+                fetch_full_page=fetch_full_page,
+                max_results=max_results,
+                max_tokens=max_tokens,
+            )
+        if target_backend == "searxng":
+            return self._search_searxng(
+                query=query,
+                fetch_full_page=fetch_full_page,
+                max_results=max_results,
+                max_tokens=max_tokens,
+            )
+        if target_backend == "perplexity":
+            return self._search_perplexity(
+                query=query,
+                fetch_full_page=fetch_full_page,
+                max_results=max_results,
+                max_tokens=max_tokens,
+                loop_count=loop_count,
+            )
+        if target_backend == "advanced":
+            return self._search_advanced(
+                query=query,
+                fetch_full_page=fetch_full_page,
+                max_results=max_results,
+                max_tokens=max_tokens,
+                loop_count=loop_count,
+            )
+
+        raise ValueError(f"Unsupported search backend: {backend}")
+    
+    def _search_tavily(
+        self,
+        *,
+        query: str,
+        fetch_full_page: bool,
+        max_results: int,
+        max_tokens: int,
+    ) -> dict[str, Any]:
+        if not self.tavily_client:
+           message = "TAVILY_API_KEY 未配置或 tavily 未安装"
+           return RuntimeError(message)
+        
+        response = self.tavily_client.search(
+            query=query,
+            max_results=max_results,
+            include_raw_content=fetch_full_page,
+        )
+
+        # 解析结构化翻译结果
+        results = []
+        for item in response.get("results", [])[:max_results]:
+            raw = item.get("raw_content") if fetch_full_page else item.get("content")
+            if raw and fetch_full_page:
+                raw = _limit_text(raw, max_tokens)
+            results.append(
+                _normalized_result(
+                    title=item.get("title") or item.get("url", ""),
+                    url=item.get("url", ""),
+                    content=item.get("content") or "",
+                    raw_content=raw,
+                )
+            )
+        return _structured_payload(
+            results,
+            backend='tavily',
+            answer=response.get("answer"),
+        )
+
+    def _search_serpapi(
+        self,
+        *,
+        query: str,
+        fetch_full_page: bool,
+        max_results: int,
+        max_tokens: int,
+    ) -> dict[str, Any]:
+        if not self.serpapi_key:
+            raise RuntimeError("SERPAPI_API_KEY 未配置，无法使用 SerpApi 搜索")
+        if GoogleSearch is None:
+            raise RuntimeError("未安装 google-search-results，无法使用 SerpApi")
+        
+        params = {
+            "engine": "google",
             "q": query,
-            "api_key": os.getenv("SERPAPI_API_KEY"),
-            "num": 3
-        })
+            "api_key": self.serpapi_key,
+            "gl": "cn",
+            "hl": "zh-cn",
+            "num": max_results,
+        }
 
-        results = search.get_dict()
+        response = GoogleSearch(params).get_dict()
 
-        result = "🔗 Google搜索结果:\n"
-        if "organic_results" in results:
-            for i, res in enumerate(results["organic_results"][:3], 1):
-                result += f"[{i}] {res.get('title', '')}\n"
-                result += f"    {res.get('snippet', '')}\n\n"
+        answer_box = response.get("answer_box") or {}
+        answer = answer_box.get("answer") or answer_box.get("snippet")
 
-        return result
+        results = []
+        for item in response.get("organic_results", [])[:max_results]:
+            raw_content = item.get("snippet")
+            if raw_content and fetch_full_page:
+                raw_content = _limit_text(raw_content, max_tokens)
+            results.append(
+                _normalized_result(
+                    title=item.get("title") or item.get("link", ""),
+                    url=item.get("link", ""),
+                    content=item.get("snippet") or "",
+                    raw_content=raw_content,
+                )
+            )
+
+        return _structured_payload(results, backend="serpapi", answer=answer)
+    
+    def _search_duckduckgo(
+        self,
+        *,
+        query: str,
+        fetch_full_page: bool,
+        max_results: int,
+        max_tokens: int,
+    ) -> dict[str, Any]:
+        if DDGS is None:
+            raise RuntimeError("未安装 ddgs，无法使用 DuckDuckGo 搜索")
+
+        results: list[dict[str, Any]] = []
+        notices: list[str] = []
+
+        try:
+            with DDGS(timeout=10) as client:  # type: ignore[call-arg]
+                search_results = client.text(query, max_results=max_results, backend="duckduckgo")
+        except Exception as exc:  # pragma: no cover - 网络异常
+            raise RuntimeError(f"DuckDuckGo 搜索失败: {exc}")
+
+        for entry in search_results:
+            url = entry.get("href") or entry.get("url")
+            title = entry.get("title") or url or ""
+            content = entry.get("body") or entry.get("content") or ""
+
+            if not url or not title:
+                notices.append(f"忽略不完整的 DuckDuckGo 结果: {entry}")
+                continue
+
+            raw_content = content
+            if fetch_full_page and url:
+                fetched = _fetch_raw_content(url)
+                if fetched:
+                    raw_content = _limit_text(fetched, max_tokens)
+
+            results.append(
+                _normalized_result(
+                    title=title,
+                    url=url,
+                    content=content,
+                    raw_content=raw_content,
+                )
+            )
+
+        return _structured_payload(results, backend="duckduckgo", notices=notices)
+
+    def _search_searxng(
+        self,
+        *,
+        query: str,
+        fetch_full_page: bool,
+        max_results: int,
+        max_tokens: int,
+    ) -> dict[str, Any]:
+        host = os.getenv("SEARXNG_URL", "http://localhost:8888").rstrip("/")
+        endpoint = f"{host}/search"
+
+        try:
+            response = requests.get(
+                endpoint,
+                params={
+                    "q": query,
+                    "format": "json",
+                    "language": "zh-CN",
+                    "safesearch": 1,
+                    "categories": "general",
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as exc:  # pragma: no cover - 网络异常
+            raise RuntimeError(f"SearXNG 搜索失败: {exc}")
+
+        results = []
+        for entry in payload.get("results", [])[:max_results]:
+            url = entry.get("url") or entry.get("link")
+            title = entry.get("title") or url or ""
+            if not url or not title:
+                continue
+            content = entry.get("content") or entry.get("snippet") or ""
+            raw_content = content
+            if fetch_full_page and url:
+                fetched = _fetch_raw_content(url)
+                if fetched:
+                    raw_content = _limit_text(fetched, max_tokens)
+            results.append(
+                _normalized_result(
+                    title=title,
+                    url=url,
+                    content=content,
+                    raw_content=raw_content,
+                )
+            )
+
+        return _structured_payload(results, backend="searxng")
+
+    def _search_perplexity(
+        self,
+        *,
+        query: str,
+        fetch_full_page: bool,
+        max_results: int,
+        max_tokens: int,
+        loop_count: int,
+    ) -> dict[str, Any]:
+        if not self.perplexity_key:
+            raise RuntimeError("PERPLEXITY_API_KEY 未配置，无法使用 Perplexity 搜索")
+
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "Authorization": f"Bearer {self.perplexity_key}",
+        }
+        payload = {
+            "model": "sonar-pro",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Search the web and provide factual information with sources.",
+                },
+                {"role": "user", "content": query},
+            ],
+        }
+
+        response = requests.post(
+            "https://api.perplexity.ai/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=30,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        content = data["choices"][0]["message"]["content"]
+        citations = data.get("citations", []) or ["https://perplexity.ai"]
+
+        results = []
+        for idx, url in enumerate(citations[:max_results], start=1):
+            snippet = content if idx == 1 else "See main Perplexity response above."
+            raw = _limit_text(content, max_tokens) if fetch_full_page and idx == 1 else None
+            results.append(
+                _normalized_result(
+                    title=f"Perplexity Source {loop_count + 1}-{idx}",
+                    url=url,
+                    content=snippet,
+                    raw_content=raw,
+                )
+            )
+
+        return _structured_payload(results, backend="perplexity", answer=content)
+    
+    def _search_advanced(
+        self,
+        *,
+        query: str,
+        fetch_full_page: bool,
+        max_results: int,
+        max_tokens: int,
+        loop_count: int,
+    ) -> dict[str, Any]:
+        notices: list[str] = []
+        aggregated: list[dict[str, Any]] = []
+        answer: str | None = None
+        backend_used = "advanced"
+
+        if self.tavily_client:
+            try:
+                tavily_payload = self._search_tavily(
+                    query=query,
+                    fetch_full_page=fetch_full_page,
+                    max_results=max_results,
+                    max_tokens=max_tokens,
+                )
+                if tavily_payload["results"]:
+                    return tavily_payload
+                notices.append("⚠️ Tavily 未返回有效结果，尝试其他搜索源")
+            except Exception as exc:  # pragma: no cover - 第三方库异常
+                notices.append(f"⚠️ Tavily 搜索失败：{exc}")
+
+        if self.serpapi_key and GoogleSearch is not None:
+            try:
+                serp_payload = self._search_serpapi(
+                    query=query,
+                    fetch_full_page=fetch_full_page,
+                    max_results=max_results,
+                    max_tokens=max_tokens,
+                )
+                if serp_payload["results"]:
+                    serp_payload["notices"] = notices + serp_payload.get("notices", [])
+                    return serp_payload
+                notices.append("⚠️ SerpApi 未返回有效结果，回退到通用搜索")
+            except Exception as exc:  # pragma: no cover - 第三方库异常
+                notices.append(f"⚠️ SerpApi 搜索失败：{exc}")
+
+        try:
+            ddg_payload = self._search_duckduckgo(
+                query=query,
+                fetch_full_page=fetch_full_page,
+                max_results=max_results,
+                max_tokens=max_tokens,
+            )
+            aggregated.extend(ddg_payload["results"])
+            notices.extend(ddg_payload.get("notices", []))
+            backend_used = ddg_payload.get("backend", backend_used)
+        except Exception as exc:  # pragma: no cover - 通用兜底
+            notices.append(f"⚠️ DuckDuckGo 搜索失败：{exc}")
+
+        return _structured_payload(
+            aggregated,
+            backend=backend_used,
+            answer=answer,
+            notices=notices,
+        )
+
+    def _format_text_response(self, *, query: str, payload: dict[str, Any]) -> str:
+        answer = payload.get("answer")
+        notices = payload.get("notices") or []
+        results = payload.get("results") or []
+        backend = payload.get("backend", self.backend)
+
+        lines = [f"🔍 搜索关键词：{query}", f"🧭 使用搜索源：{backend}"]
+        if answer:
+            lines.append(f"💡 直接答案：{answer}")
+
+        if results:
+            lines.append("")
+            lines.append("📚 参考来源：")
+            for idx, item in enumerate(results, start=1):
+                title = item.get("title") or item.get("url", "")
+                lines.append(f"[{idx}] {title}")
+                if item.get("content"):
+                    lines.append(f"    {item['content']}")
+                if item.get("url"):
+                    lines.append(f"    来源: {item['url']}")
+                lines.append("")
+        else:
+            lines.append("❌ 未找到相关搜索结果。")
+
+        if notices:
+            lines.append("⚠️ 注意事项：")
+            for notice in notices:
+                if notice:
+                    lines.append(f"- {notice}")
+
+        return "\n".join(line for line in lines if line is not None)
+    
+# 便捷函数
+
+def search(query: str, backend: str = "hybrid") -> str:
+    tool = SearchTool(backend=backend)
+    return tool.run({"input": query, "backend": backend})  # type: ignore[return-value]
 
 
-# 便携函数
-def search(query: str) -> str:
-    tool = SearchTool()
-    return tool.run({"input": query})  # type: ignore[return-value]
+def search_tavily(query: str) -> str:
+    tool = SearchTool(backend="tavily")
+    return tool.run({"input": query, "backend": "tavily"})  # type: ignore[return-value]
+
+
+def search_serpapi(query: str) -> str:
+    tool = SearchTool(backend="serpapi")
+    return tool.run({"input": query, "backend": "serpapi"})  # type: ignore[return-value]
+
+
+def search_hybrid(query: str) -> str:
+    tool = SearchTool(backend="hybrid")
+    return tool.run({"input": query, "backend": "hybrid"})  # type: ignore[return-value]
