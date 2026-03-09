@@ -20,6 +20,10 @@ from .tools.builtin.calculator import CalculatorTool, calculate
 from .tools.chain import ToolChain, ToolChainManager
 from .tools.async_executor import AsyncToolExecutor
 
+import logging
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("qdrant_client").setLevel(logging.WARNING)
+
 __all__ = [
     # 核心组件
     "Config",
