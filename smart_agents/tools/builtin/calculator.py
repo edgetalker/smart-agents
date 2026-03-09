@@ -100,3 +100,16 @@ class CalculatorTool(Tool):
         else:
             raise ValueError(f"不支持的表达式类型: {type(node)}")
         
+# 编写函数
+def calculate(expression: str) -> str:
+    """
+    执行数学计算
+
+    Args:
+        expression: 数学表达式
+
+    Returns:
+        计算结果字符串
+    """
+    tool = CalculatorTool()
+    return tool.run({"input": expression})

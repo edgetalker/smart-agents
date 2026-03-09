@@ -38,42 +38,70 @@ class AsyncToolExecutor:
 
         # 创建异步任务
         async_tasks = []
+        task_info = []
+
         for i, task in enumerate(tasks):
             tool_name = task.get("tool_name")
             input_data = task.get("input_data", "")
 
             if not tool_name:
+                print(f"⚠️ 任务 {i+1} 跳过：缺少 tool_name")
+                task_info.append(i, task, None)
                 continue
 
             print(f"创建任务 {i+1}: {tool_name}")
             async_task = self.execute_tool_async(tool_name, input_data)
-            async_tasks.append((i, task, async_task))
+            async_tasks.append(async_task)
+            task_info.append((i, task, async_task))
 
-        # 等待所有任务完成
+        # 真正的并行执行：同时等待所有有效任务
+        if async_tasks:
+            print(f"⚡ 正在并行执行 {len(async_tasks)} 个任务...")
+            task_results = await asyncio.gather(*async_tasks, return_exceptions=True)
+        else:
+            task_results = []
+
+        # 构建结果列表，保持原始顺序
         results = []
-        for i, task, async_task in enumerate(async_tasks):
-            try:
-                result = await async_task
+        result_index = 0
+        
+        for i, task, async_task in task_info:
+            if async_task is None:  # 无效任务
                 results.append({
                     "task_id": i,
-                    "tool_name": task["tool_name"],
-                    "input_data": task["input_data"],
-                    "result": result,
-                    "status": "success"
-                })
-                print(f"✅ 任务 {i+1} 完成: {task['tool_name']}")
-            except Exception as e:
-                results.append({
-                    "task_id": i,
-                    "tool_name": task["tool_name"],
-                    "input_data": task["input_data"],
-                    "result": str(e),
+                    "tool_name": task.get("tool_name", "unknown"),
+                    "input_data": task.get("input_data", ""),
+                    "result": "❌ 任务无效：缺少 tool_name",
                     "status": "error"
                 })
-                print(f"❌ 任务 {i+1} 失败: {task['tool_name']} - {e}")
-        
+                print(f"❌ 任务 {i+1} 无效: 缺少 tool_name")
+            else:
+                # 获取对应的执行结果
+                result = task_results[result_index]
+                result_index += 1
+                
+                if isinstance(result, Exception):
+                    results.append({
+                        "task_id": i,
+                        "tool_name": task["tool_name"],
+                        "input_data": task["input_data"],
+                        "result": str(result),
+                        "status": "error"
+                    })
+                    print(f"❌ 任务 {i+1} 失败: {task['tool_name']} - {result}")
+                else:
+                    results.append({
+                        "task_id": i,
+                        "tool_name": task["tool_name"],
+                        "input_data": task["input_data"],
+                        "result": result,
+                        "status": "success"
+                    })
+                    print(f"✅ 任务 {i+1} 完成: {task['tool_name']}")
+    
         print(f"🎉 并行执行完成，成功: {sum(1 for r in results if r['status'] == 'success')}/{len(results)}")
         return results
+    
 
     async def execute_tools_batch(self, tool_name: str, input_list: list[str]) -> list[dict[str, Any]]:
         """

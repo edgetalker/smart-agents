@@ -4,7 +4,7 @@ from .base import Tool, ToolParameter
 from .registry import ToolRegistry, global_registry
 
 # 内置工具
-from .builtin.search import SearchTool
+from .builtin.search_tool import SearchTool
 from .builtin.calculator import CalculatorTool
 
 # 高级功能

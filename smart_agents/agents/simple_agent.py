@@ -20,7 +20,7 @@ class SimpleAgent(Agent):
         config: Optional[Config] = None,
         tool_registry: Optional['ToolRegistry'] = None,
         enable_tool_calling: bool = True
-        ):
+    ):
         super().__init__(name, llm, system_prompt, config)
         self.tool_registry = tool_registry
         self.enable_tool_calling = enable_tool_calling and self.tool_registry is not None
