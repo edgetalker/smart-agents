@@ -1,6 +1,6 @@
 """SmartAgents - A lightweight agent framework based on LLM"""
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 # 核心组件
 from smart_agents.core.config import Config
