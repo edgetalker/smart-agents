@@ -22,7 +22,7 @@ class Message(BaseModel):
             metadata=kwargs.get('metadata', {})
         )
     
-    def to_dict(self) -> dict[str: Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转换为OpenAI格式"""
         return {
             "role": self.role,

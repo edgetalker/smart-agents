@@ -46,7 +46,7 @@ class AsyncToolExecutor:
 
             if not tool_name:
                 print(f"⚠️ 任务 {i+1} 跳过：缺少 tool_name")
-                task_info.append(i, task, None)
+                task_info.append((i, task, None))
                 continue
 
             print(f"创建任务 {i+1}: {tool_name}")

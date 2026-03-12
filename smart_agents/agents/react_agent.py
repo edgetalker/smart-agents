@@ -154,7 +154,7 @@ class ReActAgent(Agent):
     def _parse_output(self, text: str) -> tuple[str | None, str | None]:
         """解析LLM输出，提取Thought和Action"""
         thought_match = re.search(r"Thought: (.*)", text)
-        action_match = re.search(r"Action: (.*)", text)
+        action_match = re.search(r"Action:\s*(.*?)(?:\n|$)", text, re.DOTALL)
 
         thought = thought_match.group(1).strip() if thought_match else None
         action = action_match.group(1).strip() if action_match else None
